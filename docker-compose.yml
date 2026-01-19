@@ -1,0 +1,23 @@
+version: '2.2'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cvchat-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - cvchat-network
+
+networks:
+  cvchat-network:
+    driver: bridge

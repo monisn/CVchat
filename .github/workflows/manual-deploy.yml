@@ -1,0 +1,93 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - prod
+          - staging
+          - dev
+      image_tag:
+        description: 'Docker image tag (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Manual Deployment
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Set environment variables
+        run: |
+          echo "ECR_REPOSITORY=cvchat-${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          echo "LAMBDA_FUNCTION=cvchat-${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+      
+      - name: Update Lambda function
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+        run: |
+          aws lambda update-function-code \
+            --function-name $LAMBDA_FUNCTION \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          aws lambda wait function-updated \
+            --function-name $LAMBDA_FUNCTION
+      
+      - name: Test deployment
+        run: |
+          FUNCTION_URL=$(aws lambda get-function-url-config \
+            --function-name $LAMBDA_FUNCTION \
+            --query 'FunctionUrl' \
+            --output text)
+          
+          echo "Testing endpoint: $FUNCTION_URL"
+          
+          # Simple health check
+          curl -X POST "${FUNCTION_URL}chat" \
+            -H "Content-Type: application/json" \
+            -d '{"message": "Hello", "history": []}' \
+            --max-time 30 || echo "Warning: Health check failed"
+      
+      - name: Deployment summary
+        run: |
+          echo "✅ Manual deployment completed!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Function: $LAMBDA_FUNCTION"
+          echo "Image Tag: ${{ github.event.inputs.image_tag }}"

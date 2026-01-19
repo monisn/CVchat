@@ -1,2 +1,9 @@
-streamlit
-openai
+langchain
+langchain-groq
+faiss-cpu
+fastapi
+uvicorn 
+langchain-community 
+beautifulsoup4
+sentence-transformers
+langchain-huggingface

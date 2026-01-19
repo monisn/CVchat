@@ -1,0 +1,28 @@
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "prod"
+
+# Application Configuration
+project_name   = "cvchat"
+content_origin = "https://msensat.dev"
+
+# API Keys (use environment variables or AWS Secrets Manager in production)
+groq_api_key = "your-groq-api-key-here"
+
+# Lambda Configuration
+lambda_memory_size       = 3008  # Max memory for better performance
+lambda_timeout           = 300   # 5 minutes
+lambda_ephemeral_storage = 2048  # 2GB for model files
+
+# CORS Configuration
+allowed_origins = [
+  "http://localhost:1313"
+]
+
+# Tags
+tags = {
+  Project     = "CVchat"
+  ManagedBy   = "Terraform"
+  Owner       = "monica@msensat.dev"
+  Environment = "prod"
+}
