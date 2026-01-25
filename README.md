@@ -37,7 +37,11 @@ Create a .env file in the root:
 Code snippet
 
 GROQ_API_KEY=your_groq_api_key
-OPENAI_API_KEY=your_openai_api_key (optional for embeddings)
+CONTENT_ORIGIN=https://msensat.dev
+EXTRA_KNOWLEDGE="Optional extra context"
+USER_AGENT="CVchat/1.0"
+
+> **Note**: `USER_AGENT` is required to avoid 403/406 blocking errors when fetching content from your website. It identifies the bot to the server.
 3. Run with Docker
 Bash
 
